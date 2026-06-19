@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import type { DayEntry } from "./config.js";
+import { expectedHourDisplayValues } from "./validate.js";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -67,7 +68,7 @@ async function setTimeField(
 
 async function waitForHours(page: Page, expected: number): Promise<void> {
   const hours = page.getByRole("textbox", { name: "hours" });
-  const targets = new Set([String(expected), `${expected}.0`]);
+  const targets = expectedHourDisplayValues(expected);
 
   for (let i = 0; i < 30; i++) {
     const val = await hours.inputValue();
@@ -141,9 +142,8 @@ export async function fillWeek(
   page: Page,
   days: DayEntry[]
 ): Promise<void> {
-  if (days.length !== 7) {
-    throw new Error(`Expected 7 days (Mon–Sun), got ${days.length}`);
-  }
+  const { validateCurrentWeek } = await import("./validate.js");
+  validateCurrentWeek(days);
 
   for (let i = 0; i < 7; i++) {
     await fillDayDetail(page, days[i], i);

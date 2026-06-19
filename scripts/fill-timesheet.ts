@@ -12,6 +12,7 @@ import {
   submitTimesheet,
   verifyWeekGrid,
 } from "./lib/portal.js";
+import { sumWeekHours, validateCurrentWeek } from "./lib/validate.js";
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -19,7 +20,11 @@ async function main() {
   const authPath = requireAuthState();
   const periodMatch = args.period ?? config.currentWeek.periodMatch;
 
+  validateCurrentWeek(config.currentWeek.days);
+  const totalHours = sumWeekHours(config.currentWeek.days);
+
   console.log(`Filling timesheet for period: ${periodMatch}`);
+  console.log(`Expected week total: ${totalHours}h`);
 
   const browser = await chromium.launch({ headless: !args.headed });
   const context = await browser.newContext({ storageState: authPath });

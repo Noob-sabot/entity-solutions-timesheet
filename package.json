@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "auth": "env -u PLAYWRIGHT_BROWSERS_PATH tsx scripts/auth.ts",
-    "fill": "env -u PLAYWRIGHT_BROWSERS_PATH tsx scripts/fill-timesheet.ts"
+    "fill": "env -u PLAYWRIGHT_BROWSERS_PATH tsx scripts/fill-timesheet.ts",
+    "test": "node --import tsx --test tests/*.test.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
