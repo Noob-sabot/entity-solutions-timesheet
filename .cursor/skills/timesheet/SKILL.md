@@ -21,11 +21,12 @@ npm run auth
 ## Fill timesheet
 
 ```bash
-npm run fill              # headless
+npm run fill              # headless; prompts before submit if run in a terminal
 npm run fill -- --headed  # watch the browser
-npm run fill -- --submit  # also submit for approval (only when user asks)
 npm run fill -- --period "15/06/2026 21/06/2026"  # override period
 ```
+
+After save, the script asks **Submit timesheet for approval? (y/N)**. Default is no — press `y` only when you want to submit.
 
 ## Agent workflow
 
@@ -35,7 +36,7 @@ npm run fill -- --period "15/06/2026 21/06/2026"  # override period
    - `hours: 0` zeros a day; partial days use e.g. `end: "14:30"` for 5h with `break: "00:30"`
 2. Ensure auth: `npm run auth` if `auth-state.json` missing or fill reports session expired.
 3. Run `npm run fill -- --headed` so the user can verify.
-4. **Never** pass `--submit` unless the user explicitly asks to submit.
+4. **Never submit for the user.** After save, the user must confirm at the terminal prompt or submit manually on the portal.
 
 ## Default full day
 

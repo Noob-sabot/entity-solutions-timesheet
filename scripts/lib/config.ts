@@ -52,9 +52,14 @@ export function requireAuthState(): string {
 }
 
 export function parseArgs(argv: string[]) {
+  if (argv.includes("--submit")) {
+    console.warn(
+      "Warning: --submit is ignored. You will be prompted to confirm after save."
+    );
+  }
+
   return {
     headed: argv.includes("--headed"),
-    submit: argv.includes("--submit"),
     period: argv.find((a, i) => argv[i - 1] === "--period"),
   };
 }

@@ -12,6 +12,7 @@ import {
   submitTimesheet,
   verifyWeekGrid,
 } from "./lib/portal.js";
+import { confirmSubmit } from "./lib/prompt.js";
 import { sumWeekHours, validateCurrentWeek } from "./lib/validate.js";
 
 async function main() {
@@ -56,7 +57,7 @@ async function main() {
   await verifyWeekGrid(page, config.currentWeek.days);
   await saveTimesheet(page);
 
-  if (args.submit) {
+  if (await confirmSubmit()) {
     await page.goto(getTimesheetUrl(config));
     await navigateToWeekGrid(
       page,
@@ -65,7 +66,7 @@ async function main() {
     );
     await submitTimesheet(page);
   } else {
-    console.log("Not submitting (pass --submit to submit for approval).");
+    console.log("Saved. Not submitted.");
   }
 
   await browser.close();

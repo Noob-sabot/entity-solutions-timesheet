@@ -62,8 +62,17 @@ async function setTimeField(
   await field.click();
   await field.press("ControlOrMeta+a");
   await field.press("Backspace");
-  await field.fill(value);
+  await field.pressSequentially(value, { delay: 40 });
+  await field.press("Tab");
   await page.waitForTimeout(400);
+
+  const actual = await field.inputValue();
+  if (actual !== value) {
+    await field.click();
+    await field.fill(value);
+    await field.press("Tab");
+    await page.waitForTimeout(400);
+  }
 }
 
 async function waitForHours(page: Page, expected: number): Promise<void> {
@@ -107,7 +116,7 @@ async function fillDayDetail(
     await desc.press("ControlOrMeta+a");
     await desc.fill("");
   } else {
-    // Fill end before start when recovering from zeroed 09:00–00:00 rows.
+    // End first when recovering zeroed rows where end defaults to 00:00.
     await setTimeField(page, "endTime", day.end!);
     await setTimeField(page, "startTime", day.start!);
     await setTimeField(page, "nonWorkedTime", day.break!);

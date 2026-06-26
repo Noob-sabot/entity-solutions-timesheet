@@ -12,10 +12,15 @@ npx playwright install chromium
 ## First-time auth
 
 ```bash
+cp .env.example .env   # optional: auto-fill username/password
 npm run auth
 ```
 
-Log in and complete Gmail OTP in the opened browser, then click **Resume** in the Playwright inspector. Session is saved to `auth-state.json` (not committed).
+1. **Optional:** Add `TIMESHEET_USERNAME` and `TIMESHEET_PASSWORD` to `.env` (gitignored). `npm run auth` fills the login form; you only enter the Gmail OTP.
+2. Complete Gmail OTP in the opened browser if prompted.
+3. Session is saved to `auth-state.json` (gitignored). **`npm run fill` reuses this** — no login until the session expires.
+
+Do **not** put credentials in `timesheet-config.json` (it may be committed).
 
 ## Fill this week
 
@@ -25,11 +30,14 @@ Edit [`timesheet-config.json`](timesheet-config.json) `currentWeek`, then:
 npm run fill -- --headed
 ```
 
-Review in the browser. Submit manually on the portal, or:
+Review in the browser. When ready to submit, run fill again in your terminal and answer `y` at the prompt:
 
 ```bash
-npm run fill -- --submit
+npm run fill -- --headed
+# Submit timesheet for approval? (y/N): y
 ```
+
+Or submit manually on the portal after save.
 
 ## Current week example (15/06/2026 – 21/06/2026)
 
@@ -51,4 +59,4 @@ npm run fill -- --submit
 
 ## Security
 
-No credentials in the repo. Login and 2FA are always manual via `npm run auth`.
+Credentials live in local `.env` only. Gmail OTP is still manual when the portal asks for it.

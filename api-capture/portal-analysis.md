@@ -133,4 +133,4 @@ Add a Playwright script that:
 1. Loads gitignored `auth-state.json` (or prompts login).
 2. Reads week definition from `timesheet-config.json`.
 3. Fills each day in one browser session.
-4. Saves; optionally submits when `--submit` flag passed.
+4. Saves; prompts before submit (interactive terminal only).
