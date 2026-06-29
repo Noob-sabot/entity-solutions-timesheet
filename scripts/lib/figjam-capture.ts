@@ -5,10 +5,22 @@ import { FIGMA_AUTH_STATE_PATH } from "./figjam-config.js";
 const FIGMA_ORIGIN = "https://www.figma.com";
 
 export async function launchFigmaBrowser(headed: boolean, authStatePath?: string) {
-  const browser = await chromium.launch({ headless: !headed });
-  const context = await browser.newContext(
-    authStatePath ? { storageState: authStatePath } : undefined
-  );
+  // Figma blocks headless/datacenter browsers via CloudFront; headed mode is required in CI/cloud.
+  const useHeaded = headed || Boolean(process.env.CI || process.env.CURSOR_AGENT);
+  const browser = await chromium.launch({
+    headless: !useHeaded,
+    args: ["--disable-blink-features=AutomationControlled"],
+  });
+  const context = await browser.newContext({
+    ...(authStatePath ? { storageState: authStatePath } : {}),
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    viewport: { width: 1920, height: 1080 },
+    locale: "en-AU",
+  });
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+  });
   const page = await context.newPage();
   return { browser, context, page };
 }
@@ -21,13 +33,48 @@ export async function openBoard(page: Page, boardUrl: string, nodeId?: string): 
     url = u.toString();
   }
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120_000 });
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
+  await assertBoardAccessible(page);
   await dismissFigmaDialogs(page);
   await waitForCanvas(page);
+
+  if (nodeId) {
+    await focusCanvas(page);
+    await page.waitForTimeout(500);
+    await zoomToSelection(page);
+    await page.waitForTimeout(1500);
+  }
+}
+
+async function assertBoardAccessible(page: Page): Promise<void> {
+  const title = await page.title();
+  const body = await page.locator("body").innerText().catch(() => "");
+  if (title.includes("ERROR") || body.includes("Request blocked") || body.includes("403 ERROR")) {
+    throw new Error(
+      "Figma blocked this browser (CloudFront 403). Run capture locally on your machine:\n" +
+        "  npm run capture:journey-map -- --name \"Metro & town bus\" --headed"
+    );
+  }
 }
 
 async function dismissFigmaDialogs(page: Page): Promise<void> {
-  for (const label of ["Close", "Got it", "OK", "Dismiss", "Not now", "Skip"]) {
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll("[class*='banner'], [class*='toast']")) {
+      (el as HTMLElement).style.display = "none";
+    }
+  }).catch(() => {});
+
+  for (const label of [
+    "Close",
+    "Got it",
+    "OK",
+    "Dismiss",
+    "Not now",
+    "Skip",
+    "Continue",
+    "View only",
+    "Open in browser",
+  ]) {
     const btn = page.getByRole("button", { name: label });
     if (await btn.first().isVisible({ timeout: 800 }).catch(() => false)) {
       await btn.first().click().catch(() => {});
@@ -59,43 +106,45 @@ export async function ensureLoggedIn(page: Page): Promise<boolean> {
 }
 
 export async function findAndSelectMap(page: Page, mapName: string): Promise<void> {
+  const searchTerms = [
+    mapName,
+    mapName.toUpperCase(),
+    mapName.replace(/\s*&\s*/gi, " & ").toUpperCase(),
+  ];
+
   await page.keyboard.press(process.platform === "darwin" ? "Meta+f" : "Control+f");
-  await page.waitForTimeout(500);
-
-  const searchInput = page.locator('input[placeholder*="Search" i], input[type="search"]').first();
+  await page.waitForTimeout(600);
+  const searchInput = page
+    .locator('input[placeholder*="Search" i], input[type="search"], input[aria-label*="find" i]')
+    .first();
   if (await searchInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await searchInput.fill(mapName);
+    await searchInput.fill(searchTerms[searchTerms.length - 1]);
     await page.waitForTimeout(800);
-    await page.keyboard.press("Enter");
-    await page.waitForTimeout(1000);
-  } else {
-    await page.keyboard.type(mapName, { delay: 40 });
-    await page.waitForTimeout(800);
-    await page.keyboard.press("Enter");
-    await page.waitForTimeout(1000);
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(1200);
+    }
   }
-
   await page.keyboard.press("Escape");
-  await page.waitForTimeout(300);
+  await focusCanvas(page);
+  await zoomToSelection(page);
+  await page.waitForTimeout(1000);
 
-  const titleMatch = page.getByText(mapName, { exact: false }).first();
-  if (await titleMatch.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await titleMatch.click({ timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(500);
+  const mod = process.platform === "darwin" ? "Meta" : "Control";
+  for (let i = 0; i < 4; i++) {
+    await page.keyboard.press(`${mod}+Equal`);
+    await page.waitForTimeout(200);
   }
-
-  await selectAllOnCanvas(page);
+  await page.waitForTimeout(800);
 }
 
-async function selectAllOnCanvas(page: Page): Promise<void> {
+async function focusCanvas(page: Page): Promise<void> {
   const canvas = page.locator("canvas").first();
   const box = await canvas.boundingBox();
   if (box) {
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(300);
   }
-  await page.keyboard.press(process.platform === "darwin" ? "Meta+a" : "Control+a");
-  await page.waitForTimeout(500);
 }
 
 export async function zoomToSelection(page: Page): Promise<void> {
@@ -193,12 +242,14 @@ export async function panCanvas(
   const cx = region.x + region.width / 2;
   const cy = region.y + region.height / 2;
 
-  await page.keyboard.down(" ");
+  await page.keyboard.press("h");
+  await page.waitForTimeout(100);
   await page.mouse.move(cx, cy);
   await page.mouse.down();
-  await page.mouse.move(cx - dx, cy - dy, { steps: 12 });
+  await page.mouse.move(cx - dx, cy - dy, { steps: 24 });
   await page.mouse.up();
-  await page.keyboard.up(" ");
+  await page.keyboard.press("v");
+  await page.waitForTimeout(100);
 }
 
 export function computeTileGrid(

@@ -13,6 +13,7 @@ export interface FigJamCaptureConfig {
   panSettleMs: number;
   defaultZoom: number;
   pilotMapName: string;
+  pilotSearchTerm?: string;
 }
 
 export const FIGMA_AUTH_STATE_PATH = join(rootDir, "figma-auth-state.json");
@@ -26,12 +27,8 @@ export function resolveOutputDir(config: FigJamCaptureConfig): string {
   return join(rootDir, config.outputDir);
 }
 
-export function requireFigmaAuthState(): string {
-  if (!existsSync(FIGMA_AUTH_STATE_PATH)) {
-    console.error("figma-auth-state.json not found. Run: npm run figma-auth");
-    process.exit(1);
-  }
-  return FIGMA_AUTH_STATE_PATH;
+export function getFigmaAuthState(): string | undefined {
+  return existsSync(FIGMA_AUTH_STATE_PATH) ? FIGMA_AUTH_STATE_PATH : undefined;
 }
 
 export function slugify(name: string): string {
@@ -64,5 +61,7 @@ export function parseCaptureArgs(argv: string[]) {
     tilesOnly: getFlag("--tiles-only"),
     dryRun: getFlag("--dry-run"),
     pause: getFlag("--pause"),
+    noNodeId: getFlag("--no-node-id"),
+    singleFrame: getFlag("--single-frame"),
   };
 }

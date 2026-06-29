@@ -3,14 +3,13 @@ import { join } from "path";
 import {
   loadFigJamConfig,
   resolveOutputDir,
-  requireFigmaAuthState,
+  getFigmaAuthState,
   slugify,
   parseCaptureArgs,
 } from "./lib/figjam-config.js";
 import {
   launchFigmaBrowser,
   openBoard,
-  ensureLoggedIn,
   findAndSelectMap,
   zoomToSelection,
   setZoomPercent,
@@ -28,29 +27,27 @@ async function main() {
   const config = loadFigJamConfig();
   const args = parseCaptureArgs(process.argv.slice(2));
   const mapName = args.name ?? config.pilotMapName;
+  const nodeId = args.noNodeId ? undefined : args.nodeId;
   const zoom = args.zoom ?? config.defaultZoom;
   const deviceScale = args.deviceScale ?? config.deviceScaleFactor;
   const outputDir = resolveOutputDir(config);
   const baseName = slugify(mapName);
 
-  const authPath = requireFigmaAuthState();
+  const authPath = getFigmaAuthState();
 
   console.log(`Capturing journey map: "${mapName}"`);
   console.log(`  zoom=${zoom}%  deviceScale=${deviceScale}  output=${outputDir}`);
+  if (!authPath) console.log("  (public board — no Figma login session)");
 
   const { browser, page } = await launchFigmaBrowser(args.headed, authPath);
 
   try {
-    await openBoard(page, config.boardUrl, args.nodeId);
+    await openBoard(page, config.boardUrl, nodeId);
 
-    if (!(await ensureLoggedIn(page))) {
-      console.error("Not logged in to Figma. Run: npm run figma-auth");
-      process.exit(1);
-    }
-
-    await findAndSelectMap(page, mapName);
+    await findAndSelectMap(page, config.pilotSearchTerm ?? mapName);
     await zoomToSelection(page);
-    await setZoomPercent(page, zoom);
+    await page.waitForTimeout(1000);
+    if (zoom !== 100) await setZoomPercent(page, zoom);
 
     const region = await getCanvasRegion(page);
     console.log(`Canvas region: ${region.width}x${region.height} at (${region.x}, ${region.y})`);
@@ -58,7 +55,9 @@ async function main() {
     const selectionOverride =
       args.selectionWidth && args.selectionHeight
         ? { width: args.selectionWidth, height: args.selectionHeight }
-        : undefined;
+        : args.singleFrame || nodeId
+          ? { width: region.width, height: region.height }
+          : undefined;
 
     const selectionSize = estimateSelectionSize(
       region.width,
@@ -67,13 +66,18 @@ async function main() {
       selectionOverride
     );
 
-    const { cols, rows } = computeTileGrid(
+    let { cols, rows } = computeTileGrid(
       selectionSize.width,
       selectionSize.height,
       region.width,
       region.height,
       config.tileOverlapPx
     );
+
+    if (args.singleFrame) {
+      cols = 1;
+      rows = 1;
+    }
 
     console.log(`Estimated selection: ${selectionSize.width}x${selectionSize.height} CSS px`);
     console.log(`Tile grid: ${cols} cols x ${rows} rows (${cols * rows} tiles)`);

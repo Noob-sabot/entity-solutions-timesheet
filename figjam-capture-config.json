@@ -6,5 +6,6 @@
   "tileOverlapPx": 100,
   "panSettleMs": 400,
   "defaultZoom": 200,
-  "pilotMapName": "Metro & town bus"
+  "pilotMapName": "Metro & town bus",
+  "pilotSearchTerm": "METRO & TOWN BUS"
 }
