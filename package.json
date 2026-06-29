@@ -6,12 +6,19 @@
   "scripts": {
     "auth": "env -u PLAYWRIGHT_BROWSERS_PATH tsx scripts/auth.ts",
     "fill": "env -u PLAYWRIGHT_BROWSERS_PATH tsx scripts/fill-timesheet.ts",
+    "figma-auth": "env -u PLAYWRIGHT_BROWSERS_PATH tsx scripts/figma-auth.ts",
+    "capture:journey-map": "env -u PLAYWRIGHT_BROWSERS_PATH tsx scripts/capture-journey-map.ts",
     "test": "node --import tsx --test tests/*.test.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
     "@types/node": "^22.15.0",
+    "@types/sharp": "^0.31.1",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "sharp": "^0.35.2"
   }
 }

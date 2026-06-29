@@ -1,0 +1,10 @@
+{
+  "boardUrl": "https://www.figma.com/board/IUzvz0OdxdqsZxJdALzv6w/DTP-Accessibility-Journey-Maps---FINAL-DRAFT",
+  "outputDir": "exports/dtp-accessibility-journey-maps",
+  "viewport": { "width": 1920, "height": 1080 },
+  "deviceScaleFactor": 3,
+  "tileOverlapPx": 100,
+  "panSettleMs": 400,
+  "defaultZoom": 200,
+  "pilotMapName": "Metro & town bus"
+}
